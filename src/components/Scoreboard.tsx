@@ -68,7 +68,7 @@ export default function Scoreboard({ users, currentUser, room, onBack, isHome }:
           <h1 className="text-2xl font-bold gradient-text">
             {isHome ? 'EVG Vincent' : 'Scoreboard'}
           </h1>
-          {isHome && <p className="text-gray-500 text-xs mt-1">En attente du master...</p>}
+          {isHome && <p className="text-gray-500 text-xs mt-1">En attente de Raph...</p>}
         </div>
 
         {/* Progress bar */}

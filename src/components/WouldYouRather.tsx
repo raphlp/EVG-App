@@ -11,6 +11,7 @@ interface WyrProps {
 
 export default function WouldYouRather({ user, room, onBack }: WyrProps) {
   const [items, setItems] = useState<WyrType[]>([])
+  const [usedIds, setUsedIds] = useState<Set<string>>(new Set())
   const [animKey, setAnimKey] = useState(0)
 
   useEffect(() => {
@@ -23,7 +24,14 @@ export default function WouldYouRather({ user, room, onBack }: WyrProps) {
   const pick = async () => {
     if (!user.is_admin || items.length === 0) return
     vibrate([50, 30, 50])
-    const item = items[Math.floor(Math.random() * items.length)]
+    // Pick from unused items first, reset if all used
+    let available = items.filter((i) => !usedIds.has(i.id))
+    if (available.length === 0) {
+      available = items
+      setUsedIds(new Set())
+    }
+    const item = available[Math.floor(Math.random() * available.length)]
+    setUsedIds((prev) => new Set([...prev, item.id]))
     await supabase
       .from('room')
       .update({
@@ -45,19 +53,20 @@ export default function WouldYouRather({ user, room, onBack }: WyrProps) {
       <div className="min-h-dvh flex flex-col items-center justify-center px-6">
         {hasCard ? (
           <div key={`spec-${room?.current_card}`} className="animate-slide-up text-center w-full max-w-sm">
-            <div className="text-5xl mb-4">🤷</div>
             <div className="inline-block px-4 py-1 rounded-full text-sm font-bold mb-6 bg-purple-900/50 text-purple-300">
               TU PRÉFÈRES
             </div>
             <div className="space-y-4">
               <div className="card border-purple-500/30 bg-purple-900/10">
-                <p className="text-lg font-bold text-purple-300">A.</p>
-                <p className="text-xl font-medium mt-1">{optA}</p>
+                <p className="text-3xl mb-2">🙋‍♂️</p>
+                <p className="text-sm font-bold text-purple-300 mb-1">Main en haut</p>
+                <p className="text-xl font-medium">{optA}</p>
               </div>
-              <div className="text-gray-500 font-bold">OU</div>
+              <div className="text-gray-500 font-bold text-lg">OU</div>
               <div className="card border-pink-500/30 bg-pink-900/10">
-                <p className="text-lg font-bold text-pink-300">B.</p>
-                <p className="text-xl font-medium mt-1">{optB}</p>
+                <p className="text-3xl mb-2">🙇‍♂️</p>
+                <p className="text-sm font-bold text-pink-300 mb-1">Main en bas</p>
+                <p className="text-xl font-medium">{optB}</p>
               </div>
             </div>
           </div>
@@ -65,7 +74,7 @@ export default function WouldYouRather({ user, room, onBack }: WyrProps) {
           <div className="animate-fade-in text-center">
             <div className="text-6xl mb-4">🤷</div>
             <h1 className="text-2xl font-bold gradient-text mb-4">Tu préfères</h1>
-            <p className="text-gray-400">En attente du master...</p>
+            <p className="text-gray-400">En attente de Raph...</p>
             <div className="mt-4 w-8 h-8 border-2 border-accent border-t-transparent rounded-full animate-spin mx-auto" />
           </div>
         )}

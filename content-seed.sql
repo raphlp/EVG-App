@@ -1,6 +1,6 @@
 -- =============================================
 -- EVG Vincent — Contenu des jeux
--- À personnaliser puis exécuter dans Supabase SQL Editor
+-- À exécuter dans Supabase SQL Editor APRÈS le schema
 -- =============================================
 
 -- Vide les anciennes données
@@ -27,12 +27,12 @@ insert into truths (content) values
   ('Tu as déjà menti à quelqu''un du groupe ? Sur quoi ?'),
   ('Quel est ton crush inavoué ?'),
   ('C''est quoi le truc le plus cher que t''as cassé bourré ?'),
-  ('Tu préfères qui entre [PRÉNOM 1] et [PRÉNOM 2] ? Pourquoi ?'),
   ('Raconte ton pire date de ta vie'),
   ('Quel est le message le plus gênant que t''as envoyé par erreur ?'),
   ('Si tu devais noter Vincent en tant que pote sur 10, tu mets combien ?'),
   ('C''est quoi le truc le plus nul que t''as fait pour impressionner quelqu''un ?'),
-  ('Qui ici tu appellerais en premier si t''avais un problème à 3h du mat ?');
+  ('Qui ici tu appellerais en premier si t''avais un problème à 3h du mat ?'),
+  ('Quel est ton souvenir le plus gênant avec Vincent ?');
 
 -- =============================================
 -- 🎬 ACTIONS (20)
@@ -60,56 +60,63 @@ insert into dares (content) values
   ('Chante le refrain de la dernière chanson que t''as écoutée');
 
 -- =============================================
--- 🧠 QUIZ VINCENT
--- Remplace les réponses par les VRAIES infos sur Vincent
+-- 🧠 QUIZ VINCENT (18 questions)
 -- correct = 0 pour A, 1 pour B, 2 pour C, 3 pour D
 -- =============================================
 insert into quiz_questions (question, answer_a, answer_b, answer_c, answer_d, correct) values
-  -- Personnalise les réponses et le correct ↓
-  ('Où Vincent a rencontré sa future femme ?',
-   '[Réponse A]', '[Réponse B]', '[Réponse C]', '[Réponse D]', 0),
+  ('Où Vincent a rencontré Prisca ?',
+   'En soirée', 'Sur une appli', 'Au travail', 'Par des amis communs', 2),
 
-  ('En quelle année ils se sont mis ensemble ?',
-   '[Réponse A]', '[Réponse B]', '[Réponse C]', '[Réponse D]', 0),
+  ('En quelle année Vincent et Prisca se sont mis ensemble ?',
+   '2021', '2022', '2023', '2024', 2),
 
   ('Quel est le plat préféré de Vincent ?',
-   '[Réponse A]', '[Réponse B]', '[Réponse C]', '[Réponse D]', 0),
+   'La raclette', 'Le pot-au-feu', 'Le burger', 'Les lasagnes', 1),
 
   ('Quel est le plus gros défaut de Vincent ?',
-   '[Réponse A]', '[Réponse B]', '[Réponse C]', '[Réponse D]', 0),
+   'Radin', 'Susceptible', 'Toujours en retard', 'Trop têtu', 1),
 
-  ('Quel âge avait Vincent à son premier baiser ?',
-   '[Réponse A]', '[Réponse B]', '[Réponse C]', '[Réponse D]', 0),
+  ('Quel âge avait Vincent à son premier bisou ?',
+   '12 ans', '14 ans', '16 ans', '18 ans', 1),
 
   ('Quel est le sport préféré de Vincent ?',
-   '[Réponse A]', '[Réponse B]', '[Réponse C]', '[Réponse D]', 0),
+   'Le foot', 'Le tennis', 'Le ski', 'La natation', 2),
 
   ('Quelle est la plus grande peur de Vincent ?',
-   '[Réponse A]', '[Réponse B]', '[Réponse C]', '[Réponse D]', 0),
+   'Les araignées', 'Se casser un os', 'Parler en public', 'Les hauteurs', 1),
 
   ('Quel est le film préféré de Vincent ?',
-   '[Réponse A]', '[Réponse B]', '[Réponse C]', '[Réponse D]', 0),
+   'Le Seigneur des Anneaux', 'Star Wars', 'Intouchables', 'The Dark Knight', 1),
 
-  ('Comment s''appelle le/la meilleur(e) ami(e) de Vincent ?',
-   '[Réponse A]', '[Réponse B]', '[Réponse C]', '[Réponse D]', 0),
-
-  ('Quel est le surnom que sa femme lui donne ?',
-   '[Réponse A]', '[Réponse B]', '[Réponse C]', '[Réponse D]', 0),
+  ('Quel est le surnom que Prisca donne à Vincent ?',
+   'Mon cœur', 'Chéri', 'Bébé', 'Vinou', 1),
 
   ('Quelle est la destination de rêve de Vincent ?',
-   '[Réponse A]', '[Réponse B]', '[Réponse C]', '[Réponse D]', 0),
+   'Le Japon', 'Le Vietnam', 'La Thaïlande', 'L''Australie', 1),
 
   ('Quel est le talent caché de Vincent ?',
-   '[Réponse A]', '[Réponse B]', '[Réponse C]', '[Réponse D]', 0),
+   'Il chante bien', 'Il est bricoleur', 'Il danse bien', 'Il cuisine bien', 1),
 
-  ('Quelle est la chanson que Vincent met à fond en soirée ?',
-   '[Réponse A]', '[Réponse B]', '[Réponse C]', '[Réponse D]', 0),
-
-  ('Combien de fois Vincent a été bourré ce mois-ci ?',
-   '0', '1-2', '3-5', 'On a arrêté de compter', 3),
+  ('Quel est l''artiste que Vincent met à fond en soirée ?',
+   'Oasis', 'Nirvana', 'AC/DC', 'Red Hot Chili Peppers', 1),
 
   ('Quelle est la boisson préférée de Vincent ?',
-   '[Réponse A]', '[Réponse B]', '[Réponse C]', '[Réponse D]', 0);
+   'Orangina', 'Coca', 'Ice Tea', 'Perrier', 1),
+
+  ('Quel est le métier de Vincent ?',
+   'Comptable', 'Banquier', 'Commercial', 'Ingénieur', 1),
+
+  ('Quel est l''endroit le plus insolite où Vincent s''est endormi bourré ?',
+   'Sur un banc public', 'Dans un rond-point', 'Dans une baignoire', 'Sur le capot d''une voiture', 1),
+
+  ('Quelle est la plus grosse connerie que Vincent a faite ?',
+   'Sauter dans une piscine habillé', 'Partir en road trip sans permis', 'Appeler son boss bourré', 'Se raser la tête pour un pari', 0),
+
+  ('Quel est le surnom que ses potes donnent à Vincent ?',
+   'Vince', 'Vins', 'Vinz', 'Le Vin', 1),
+
+  ('Quelle est la plus grande qualité de Vincent ?',
+   'Drôle', 'Gentil', 'Généreux', 'Loyal', 1);
 
 -- =============================================
 -- 🤷 TU PRÉFÈRES (20)

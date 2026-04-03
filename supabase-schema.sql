@@ -2,6 +2,7 @@
 -- Run this in your Supabase SQL Editor
 -- ⚠️ Drops everything and recreates from scratch
 
+drop table if exists quiz_answers cascade;
 drop table if exists vincent_challenges cascade;
 drop table if exists truths cascade;
 drop table if exists dares cascade;
@@ -37,7 +38,12 @@ create table room (
   current_card_target text,
   current_challenge_id uuid,
   session_version int default 1,
-  quiz_launched boolean default false
+  quiz_launched boolean default false,
+  quiz_question_index int default 0,
+  quiz_show_results boolean default false,
+  quiz_finished boolean default false,
+  quiz_paused boolean default false,
+  quiz_question_started_at timestamp with time zone
 );
 
 -- Challenges proposed by players for Vincent
@@ -127,10 +133,21 @@ insert into would_you_rather (option_a, option_b) values
   ('Revivre ta pire honte', 'Que tout le monde la voit en vidéo'),
   ('Être le plus moche mais le plus drôle', 'Être le plus beau mais ennuyeux');
 
+-- Quiz answers (track who answered what in live quiz)
+create table quiz_answers (
+  id uuid default gen_random_uuid() primary key,
+  user_id uuid references users(id) on delete cascade,
+  question_id uuid references quiz_questions(id) on delete cascade,
+  answer int not null,
+  created_at timestamp with time zone default now(),
+  unique(user_id, question_id)
+);
+
 -- Enable Realtime
 alter publication supabase_realtime add table users;
 alter publication supabase_realtime add table room;
 alter publication supabase_realtime add table vincent_challenges;
+alter publication supabase_realtime add table quiz_answers;
 
 -- RLS Policies (permissive for party app)
 alter table users enable row level security;
@@ -148,3 +165,6 @@ create policy "Allow all on truths" on truths for all using (true) with check (t
 create policy "Allow all on dares" on dares for all using (true) with check (true);
 create policy "Allow all on quiz_questions" on quiz_questions for all using (true) with check (true);
 create policy "Allow all on would_you_rather" on would_you_rather for all using (true) with check (true);
+
+alter table quiz_answers enable row level security;
+create policy "Allow all on quiz_answers" on quiz_answers for all using (true) with check (true);

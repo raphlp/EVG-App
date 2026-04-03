@@ -150,19 +150,27 @@ export default function App() {
     if (!targetUser) return
     const newScore = Math.max(0, targetUser.score + points)
     await supabase.from('users').update({ score: newScore }).eq('id', userId)
+    await updateProgress()
+  }
 
-    if (room) {
-      const { data: allUsers } = await supabase.from('users').select('score')
-      if (allUsers) {
-        const totalPoints = allUsers.reduce((sum, u) => sum + (u.score || 0), 0)
-        const maxPossible = Math.max(totalPoints + 100, 500)
-        const progress = Math.min(100, Math.round((totalPoints / maxPossible) * 100))
-        await supabase
-          .from('room')
-          .update({ total_points: totalPoints, progress_percentage: progress })
-          .eq('id', room.id)
-      }
-    }
+  const updateProgress = async () => {
+    if (!room) return
+    // Progress = quiz done (50%) + vincent challenges completed (50%)
+    const { data: roomData } = await supabase.from('room').select('quiz_finished').single()
+    const quizDone = roomData?.quiz_finished ? 1 : 0
+
+    const { data: challenges } = await supabase.from('vincent_challenges').select('status')
+    const totalChallenges = challenges?.length || 0
+    const completedChallenges = challenges?.filter((c) => c.status === 'completed').length || 0
+    const challengeRatio = totalChallenges > 0 ? completedChallenges / totalChallenges : 0
+
+    const progress = Math.round((quizDone * 50) + (challengeRatio * 50))
+    const totalPoints = users.reduce((sum, u) => sum + (u.score || 0), 0)
+
+    await supabase
+      .from('room')
+      .update({ total_points: totalPoints, progress_percentage: progress })
+      .eq('id', room.id)
   }
 
   const handleScore = async (points: number) => {
@@ -171,16 +179,14 @@ export default function App() {
   }
 
   const goBack = async () => {
-    await supabase
-      .from('room')
-      .update({
-        current_game: 'idle',
-        current_card: null,
-        current_card_type: null,
-        current_card_target: null,
-        current_challenge_id: null,
-      })
-      .eq('name', 'EVG Vincent')
+    // Only reset card/game state — quiz state is managed by Quiz component
+    await supabase.from('room').update({
+      current_game: 'idle',
+      current_card: null,
+      current_card_type: null,
+      current_card_target: null,
+      current_challenge_id: null,
+    }).eq('name', 'EVG Vincent')
     setPage('home')
   }
 
@@ -217,17 +223,22 @@ export default function App() {
   if (!user.is_admin) {
     const currentGame = room?.current_game
 
+    // Quiz: enter when triggered, exit when game goes back to idle
     if (currentGame === 'quiz' && !quizTriggered.current) {
       quizTriggered.current = true
       setInQuiz(true)
     }
+    if (currentGame !== 'quiz' && inQuiz) {
+      setInQuiz(false)
+      quizTriggered.current = false
+    }
 
-    if (inQuiz) {
-      return <Quiz onBack={() => { setInQuiz(false); quizTriggered.current = false }} onScore={handleScore} />
+    if (inQuiz && currentGame === 'quiz') {
+      return <Quiz user={user} room={room} users={users} onBack={() => { setInQuiz(false); quizTriggered.current = false }} onScore={handleScore} />
     }
 
     if (currentGame === 'truth-dare') {
-      return <TruthDare user={user} room={room} onBack={() => {}} />
+      return <TruthDare user={user} room={room} users={users} onBack={() => {}} />
     }
 
     if (currentGame === 'challenge') {
@@ -254,11 +265,11 @@ export default function App() {
   // =============================================
   switch (page) {
     case 'truth-dare':
-      return <TruthDare user={user} room={room} onBack={goBack} />
+      return <TruthDare user={user} room={room} users={users} onBack={goBack} />
     case 'challenges':
       return <Challenges user={user} room={room} onBack={goBack} onScore={handleScoreUser} />
     case 'quiz':
-      return <Quiz onBack={goBack} onScore={handleScore} />
+      return <Quiz user={user} room={room} users={users} onBack={goBack} onScore={handleScore} />
     case 'wyr':
       return <WouldYouRather user={user} room={room} onBack={goBack} />
     case 'scoreboard':

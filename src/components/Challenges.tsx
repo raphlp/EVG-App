@@ -143,7 +143,7 @@ export default function Challenges({ user, room, onBack, onScore }: ChallengesPr
             <div className="card mt-4">
               <p className="text-xl font-bold leading-relaxed">{room.current_card}</p>
             </div>
-            <p className="text-gray-500 text-sm mt-4">En attente de validation du master...</p>
+            <p className="text-gray-500 text-sm mt-4">En attente de validation de Raph...</p>
           </div>
         ) : (
           <div className="animate-fade-in text-center">
@@ -152,7 +152,7 @@ export default function Challenges({ user, room, onBack, onScore }: ChallengesPr
             <p className="text-gray-400 mb-2">{pending.length} défis en attente</p>
             <p className="text-green-400 mb-2">{completed.length} réussis ✅</p>
             {failed.length > 0 && <p className="text-red-400">{failed.length} ratés ❌</p>}
-            <p className="text-gray-500 text-sm mt-6">En attente du master...</p>
+            <p className="text-gray-500 text-sm mt-6">En attente de Raph...</p>
             <div className="mt-4 w-8 h-8 border-2 border-accent border-t-transparent rounded-full animate-spin mx-auto" />
           </div>
         )}

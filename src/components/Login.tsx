@@ -180,7 +180,7 @@ export default function Login({ onLogin }: LoginProps) {
         <button onClick={() => setStep('pick')} className="absolute top-4 left-4 text-gray-400 text-2xl">←</button>
         <div className="animate-slide-up w-full max-w-xs text-center">
           <div className="text-4xl mb-4">🔒</div>
-          <p className="text-gray-400 mb-4">Code admin</p>
+          <p className="text-gray-400 mb-4">Code Raph</p>
           <input
             type="number"
             inputMode="numeric"

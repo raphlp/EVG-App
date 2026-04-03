@@ -30,6 +30,11 @@ export interface Room {
   current_challenge_id: string | null
   session_version: number
   quiz_launched: boolean
+  quiz_question_index: number
+  quiz_show_results: boolean
+  quiz_finished: boolean
+  quiz_paused: boolean
+  quiz_question_started_at: string | null
 }
 
 export interface QuizQuestion {
@@ -48,14 +53,12 @@ export interface WouldYouRather {
   option_b: string
 }
 
-export type Page = 'home' | 'truth-dare' | 'challenges' | 'quiz' | 'wyr' | 'scoreboard'
+export interface QuizAnswer {
+  id: string
+  user_id: string
+  question_id: string
+  answer: number
+  created_at: string
+}
 
-export const PLAYERS = [
-  { username: 'bruno', display_name: 'Bruno', is_admin: false, is_target: false },
-  { username: 'laurent', display_name: 'Laurent', is_admin: false, is_target: false },
-  { username: 'denis', display_name: 'Denis', is_admin: false, is_target: false },
-  { username: 'xavier', display_name: 'Xavier', is_admin: false, is_target: false },
-  { username: 'flo', display_name: 'Flo', is_admin: false, is_target: false },
-  { username: 'raph', display_name: 'Raph', is_admin: true, is_target: false },
-  { username: 'vincent', display_name: 'Vincent', is_admin: false, is_target: true },
-] as const
+export type Page = 'home' | 'truth-dare' | 'challenges' | 'quiz' | 'wyr' | 'scoreboard'

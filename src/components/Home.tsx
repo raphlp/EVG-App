@@ -23,7 +23,19 @@ export default function Home({ user, room, onNavigate, onLogout, onAdmin }: Home
     const gameState = gameMap[page]
     if (gameState) {
       const updateData: Record<string, unknown> = { current_game: gameState }
-      if (page === 'quiz') updateData.quiz_launched = true
+      if (page === 'quiz') {
+        // If quiz already in progress, just resume. Otherwise start fresh.
+        const quizInProgress = room?.quiz_launched && !room?.quiz_finished
+        if (!quizInProgress) {
+          updateData.quiz_launched = true
+          updateData.quiz_question_index = 0
+          updateData.quiz_show_results = false
+          updateData.quiz_finished = false
+          updateData.quiz_question_started_at = new Date().toISOString()
+          // Clean old answers
+          await supabase.from('quiz_answers').delete().not('id', 'is', null)
+        }
+      }
       await supabase
         .from('room')
         .update(updateData)
@@ -34,10 +46,9 @@ export default function Home({ user, room, onNavigate, onLogout, onAdmin }: Home
 
   const resetQuiz = async () => {
     vibrate()
-    await supabase
-      .from('room')
-      .update({ quiz_launched: false })
-      .eq('name', 'EVG Vincent')
+    await supabase.from('quiz_answers').delete().not('id', 'is', null)
+    await supabase.from('room').update({ quiz_launched: false, quiz_question_index: 0, quiz_show_results: false, quiz_finished: false }).eq('name', 'EVG Vincent')
+    await supabase.from('room').update({ quiz_paused: false, quiz_question_started_at: null }).eq('name', 'EVG Vincent')
   }
 
   const menuItems: { page: Page; emoji: string; label: string; desc: string; color: string }[] = [
@@ -53,7 +64,7 @@ export default function Home({ user, room, onNavigate, onLogout, onAdmin }: Home
     },
     {
       page: 'quiz', emoji: '🧠', label: 'Quiz Vincent',
-      desc: 'Lance le quiz pour tous',
+      desc: room?.quiz_launched && !room?.quiz_finished ? 'Reprendre le quiz' : 'Lance le quiz pour tous',
       color: 'from-blue-600 to-purple-600',
     },
     {
@@ -111,10 +122,10 @@ export default function Home({ user, room, onNavigate, onLogout, onAdmin }: Home
       {/* Menu */}
       <div className="space-y-3">
         {menuItems.map((item, i) => {
-          const quizDone = item.page === 'quiz' && room?.quiz_launched
+          const quizFinished = item.page === 'quiz' && room?.quiz_finished
 
-          if (quizDone) {
-            // Quiz already done → button becomes reset
+          if (quizFinished) {
+            // Quiz finished → button becomes reset
             return (
               <button
                 key={item.page}
@@ -125,7 +136,7 @@ export default function Home({ user, room, onNavigate, onLogout, onAdmin }: Home
                 <div className="text-4xl opacity-50">🧠</div>
                 <div className="flex-1">
                   <div className="font-bold text-lg text-gray-400">Quiz Vincent</div>
-                  <div className="text-sm text-gray-500">Déjà lancé ✅</div>
+                  <div className="text-sm text-gray-500">Terminé ✅</div>
                 </div>
                 <div className="text-2xl">🔄</div>
               </button>

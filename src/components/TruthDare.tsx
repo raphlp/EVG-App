@@ -2,17 +2,19 @@ import { useState, useEffect } from 'react'
 import { vibrate } from '../lib/vibrate'
 import { supabase } from '../lib/supabase'
 import type { User, Room } from '../lib/types'
-import { PLAYERS } from '../lib/types'
 
 interface TruthDareProps {
   user: User
   room: Room | null
+  users: User[]
   onBack: () => void
 }
 
-export default function TruthDare({ user, room, onBack }: TruthDareProps) {
+export default function TruthDare({ user, room, users, onBack }: TruthDareProps) {
   const [truths, setTruths] = useState<string[]>([])
   const [dares, setDares] = useState<string[]>([])
+  const [usedTruths, setUsedTruths] = useState<Set<string>>(new Set())
+  const [usedDares, setUsedDares] = useState<Set<string>>(new Set())
   const [animKey, setAnimKey] = useState(0)
 
   useEffect(() => {
@@ -29,10 +31,20 @@ export default function TruthDare({ user, room, onBack }: TruthDareProps) {
     vibrate([50, 30, 50])
 
     const list = type === 'truth' ? truths : dares
+    const used = type === 'truth' ? usedTruths : usedDares
+    const setUsed = type === 'truth' ? setUsedTruths : setUsedDares
     if (list.length === 0) return
-    const text = list[Math.floor(Math.random() * list.length)]
+    // Pick from unused items first, reset if all used
+    let available = list.filter((t) => !used.has(t))
+    if (available.length === 0) {
+      available = list
+      setUsed(new Set())
+    }
+    const text = available[Math.floor(Math.random() * available.length)]
+    setUsed((prev) => new Set([...prev, text]))
 
-    const otherPlayers = PLAYERS.filter((p) => !p.is_admin)
+    const otherPlayers = users.filter((p) => !p.is_admin)
+    if (otherPlayers.length === 0) return
     const target = otherPlayers[Math.floor(Math.random() * otherPlayers.length)]
 
     await supabase
@@ -80,7 +92,7 @@ export default function TruthDare({ user, room, onBack }: TruthDareProps) {
           <div className="animate-fade-in text-center">
             <div className="text-6xl mb-4">🔥</div>
             <h1 className="text-2xl font-bold gradient-text mb-4">Action / Vérité</h1>
-            <p className="text-gray-400">En attente du master...</p>
+            <p className="text-gray-400">En attente de Raph...</p>
             <div className="mt-4 w-8 h-8 border-2 border-accent border-t-transparent rounded-full animate-spin mx-auto" />
           </div>
         )}

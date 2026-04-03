@@ -80,13 +80,14 @@ export default function AdminPanel({ user, onClose, onLogout, onContent }: Admin
         current_challenge_id: null,
       })
       .eq('name', 'EVG Vincent')
-    // Reset room — session + quiz (separate update in case columns don't exist yet)
+    // Reset quiz state
+    await supabase.from('quiz_answers').delete().not('id', 'is', null)
+    await supabase.from('room').update({ quiz_launched: false, quiz_question_index: 0, quiz_show_results: false, quiz_finished: false }).eq('name', 'EVG Vincent')
+    await supabase.from('room').update({ quiz_paused: false, quiz_question_started_at: null }).eq('name', 'EVG Vincent')
+    // Bump session version to force logout
     const { data: currentRoom } = await supabase.from('room').select('session_version').single()
     const newVersion = (currentRoom?.session_version || 1) + 1
-    await supabase
-      .from('room')
-      .update({ session_version: newVersion, quiz_launched: false })
-      .eq('name', 'EVG Vincent')
+    await supabase.from('room').update({ session_version: newVersion }).eq('name', 'EVG Vincent')
     addLog('✅ TOUT remis à zéro — déconnexion...')
     setConfirmAction(null)
     setTimeout(() => onLogout(), 500)
@@ -94,17 +95,19 @@ export default function AdminPanel({ user, onClose, onLogout, onContent }: Admin
 
   const clearRoomState = async () => {
     vibrate()
-    await supabase
-      .from('room')
-      .update({
-        current_game: 'idle',
-        current_card: null,
-        current_card_type: null,
-        current_card_target: null,
-        current_challenge_id: null,
-        quiz_launched: false,
-      })
-      .eq('name', 'EVG Vincent')
+    await supabase.from('room').update({
+      current_game: 'idle',
+      current_card: null,
+      current_card_type: null,
+      current_card_target: null,
+      current_challenge_id: null,
+      quiz_launched: false,
+      quiz_question_index: 0,
+      quiz_show_results: false,
+      quiz_finished: false,
+    }).eq('name', 'EVG Vincent')
+    await supabase.from('room').update({ quiz_paused: false, quiz_question_started_at: null }).eq('name', 'EVG Vincent')
+    await supabase.from('quiz_answers').delete().not('id', 'is', null)
     addLog('✅ État du jeu nettoyé + quiz re-disponible')
   }
 
@@ -122,10 +125,10 @@ export default function AdminPanel({ user, onClose, onLogout, onContent }: Admin
 
   const resetQuiz = async () => {
     vibrate()
-    await supabase
-      .from('room')
-      .update({ quiz_launched: false })
-      .eq('name', 'EVG Vincent')
+    await supabase.from('quiz_answers').delete().not('id', 'is', null)
+    // Split updates: core fields first, then newer fields (in case columns don't exist yet)
+    await supabase.from('room').update({ quiz_launched: false, quiz_question_index: 0, quiz_show_results: false, quiz_finished: false }).eq('name', 'EVG Vincent')
+    await supabase.from('room').update({ quiz_paused: false, quiz_question_started_at: null }).eq('name', 'EVG Vincent')
     addLog('✅ Quiz re-disponible')
   }
 
@@ -190,8 +193,8 @@ export default function AdminPanel({ user, onClose, onLogout, onContent }: Admin
       <div className="animate-slide-up">
         <div className="text-center mb-6">
           <div className="text-4xl mb-2">🎮</div>
-          <h1 className="text-2xl font-bold gradient-text">Panel Admin</h1>
-          <p className="text-yellow-400 text-sm mt-1">Raph — Master Control</p>
+          <h1 className="text-2xl font-bold gradient-text">Panel Raph</h1>
+          <p className="text-yellow-400 text-sm mt-1">Raph — Game Master</p>
         </div>
 
         {/* Content editor button */}
