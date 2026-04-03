@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useMemo } from 'react'
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react'
 import { supabase } from '../lib/supabase'
 import type { QuizQuestion, User, Room } from '../lib/types'
 import { vibrate } from '../lib/vibrate'
@@ -41,22 +41,27 @@ export default function Quiz({ user, room, users, onBack, onScore }: QuizProps) 
   const [myAnswer, setMyAnswer] = useState<number | null>(null)
   const [loading, setLoading] = useState(true)
   const [scoredQuestions, setScoredQuestions] = useState<Set<string>>(() => {
-    // Restore scored questions from sessionStorage to prevent double-scoring on remount
     try {
       const stored = sessionStorage.getItem('evg-quiz-scored')
       return stored ? new Set(JSON.parse(stored)) : new Set()
     } catch { return new Set() }
   })
   // Track cumulative quiz points per player locally (awarded points, not recalculated)
-  const [awardedPoints, setAwardedPoints] = useState<Record<string, number>>({})
+  const [awardedPoints, setAwardedPoints] = useState<Record<string, number>>(() => {
+    try {
+      const stored = sessionStorage.getItem('evg-quiz-points')
+      return stored ? JSON.parse(stored) : {}
+    } catch { return {} }
+  })
 
   const qIndex = room?.quiz_question_index ?? 0
   const showResults = room?.quiz_show_results ?? false
   const quizFinished = room?.quiz_finished ?? false
   const questionStartedAt = room?.quiz_question_started_at ?? null
   const currentQuestion = questions[qIndex]
-  // All users play, including admin
-  const allPlayers = users
+  // All users play except Vincent (target) — he spectates
+  const allPlayers = users.filter((u) => !u.is_target)
+  const isSpectator = user.is_target
 
   useEffect(() => {
     supabase.from('quiz_questions').select('*').order('created_at').then(({ data }) => {
@@ -64,6 +69,18 @@ export default function Quiz({ user, room, users, onBack, onScore }: QuizProps) 
       setLoading(false)
     })
   }, [])
+
+  // Detect fresh quiz start: index=0 + no answers yet → clear stale sessionStorage
+  useEffect(() => {
+    if (qIndex === 0 && allAnswers.length === 0 && scoredQuestions.size > 0) {
+      setScoredQuestions(new Set())
+      setAwardedPoints({})
+      try {
+        sessionStorage.removeItem('evg-quiz-scored')
+        sessionStorage.removeItem('evg-quiz-points')
+      } catch {}
+    }
+  }, [qIndex, allAnswers.length, scoredQuestions.size])
 
   const fetchAllAnswers = useCallback(async () => {
     const { data } = await supabase
@@ -79,10 +96,17 @@ export default function Quiz({ user, room, users, onBack, onScore }: QuizProps) 
 
   useEffect(() => { fetchAllAnswers() }, [fetchAllAnswers, qIndex])
 
+  // Sync myAnswer from DB, but don't overwrite if we just answered locally
+  const lastSubmitRef = useRef(0)
   useEffect(() => {
     if (currentQuestion && user) {
       const existing = allAnswers.find((a) => a.user_id === user.id && a.question_id === currentQuestion.id)
-      setMyAnswer(existing ? existing.answer : null)
+      if (existing) {
+        setMyAnswer(existing.answer)
+      } else if (Date.now() - lastSubmitRef.current > 3000) {
+        // Only reset to null if we didn't just submit (avoids race condition)
+        setMyAnswer(null)
+      }
     } else {
       setMyAnswer(null)
     }
@@ -124,6 +148,7 @@ export default function Quiz({ user, room, users, onBack, onScore }: QuizProps) 
       for (const [uid, pts] of Object.entries(pointsForQuestion)) {
         next[uid] = (next[uid] || 0) + pts
       }
+      try { sessionStorage.setItem('evg-quiz-points', JSON.stringify(next)) } catch {}
       return next
     })
 
@@ -145,8 +170,9 @@ export default function Quiz({ user, room, users, onBack, onScore }: QuizProps) 
   const allAnsweredQ = answeredCount >= allPlayers.length
 
   const submitAnswer = async (answerIndex: number) => {
-    if (myAnswer !== null || showResults || !currentQuestion) return
+    if (isSpectator || myAnswer !== null || showResults || !currentQuestion) return
     vibrate()
+    lastSubmitRef.current = Date.now()
     setMyAnswer(answerIndex)
     await supabase.from('quiz_answers').upsert({
       user_id: user.id,
@@ -183,7 +209,7 @@ export default function Quiz({ user, room, users, onBack, onScore }: QuizProps) 
     }).eq('name', 'EVG Vincent')
     setScoredQuestions(new Set())
     setAwardedPoints({})
-    try { sessionStorage.removeItem('evg-quiz-scored') } catch {}
+    try { sessionStorage.removeItem('evg-quiz-scored'); sessionStorage.removeItem('evg-quiz-points') } catch {}
   }
 
   const quitQuiz = async () => {
@@ -203,7 +229,7 @@ export default function Quiz({ user, room, users, onBack, onScore }: QuizProps) 
       quiz_paused: false,
       quiz_question_started_at: null,
     }).eq('name', 'EVG Vincent')
-    try { sessionStorage.removeItem('evg-quiz-scored') } catch {}
+    try { sessionStorage.removeItem('evg-quiz-scored'); sessionStorage.removeItem('evg-quiz-points') } catch {}
     onBack()
   }
 
@@ -374,28 +400,47 @@ export default function Quiz({ user, room, users, onBack, onScore }: QuizProps) 
       </div>
 
       {/* Answer grid */}
-      <div className="grid grid-cols-2 gap-3 flex-1">
-        {questionAnswers.map((ans, i) => (
-          <button
-            key={i}
-            onClick={() => submitAnswer(i)}
-            disabled={hasAnswered}
-            className={`p-4 rounded-2xl text-white font-bold text-sm transition-all active:scale-95 bg-gradient-to-br ${COLORS[i]} ${
-              hasAnswered
-                ? myAnswer === i
-                  ? 'ring-4 ring-white/50 scale-105'
-                  : 'opacity-30'
-                : ''
-            }`}
-          >
-            <p className="text-2xl mb-2">{SHAPES[i]}</p>
-            <p>{ans}</p>
-          </button>
-        ))}
-      </div>
+      {isSpectator ? (
+        <div className="flex-1 flex flex-col items-center justify-center text-center">
+          <div className="text-4xl mb-3">👑</div>
+          <p className="text-gray-400 text-sm">Tu regardes les autres galérer...</p>
+          <div className="flex justify-center gap-1.5 mt-4">
+            {allPlayers.map((u) => {
+              const hasAnsw = currentAnswers.some((a) => a.user_id === u.id)
+              return (
+                <div key={u.id} className="flex flex-col items-center gap-1">
+                  <div className={`w-3 h-3 rounded-full transition-all ${hasAnsw ? 'bg-green-500' : 'bg-dark-lighter'}`} />
+                  <span className="text-[10px] text-gray-600">{u.display_name.slice(0, 3)}</span>
+                </div>
+              )
+            })}
+          </div>
+          <p className="text-gray-600 text-xs mt-2">{answeredCount}/{allPlayers.length} ont répondu</p>
+        </div>
+      ) : (
+        <div className="grid grid-cols-2 gap-3 flex-1">
+          {questionAnswers.map((ans, i) => (
+            <button
+              key={i}
+              onClick={() => submitAnswer(i)}
+              disabled={hasAnswered}
+              className={`p-4 rounded-2xl text-white font-bold text-sm transition-all active:scale-95 bg-gradient-to-br ${COLORS[i]} ${
+                hasAnswered
+                  ? myAnswer === i
+                    ? 'ring-4 ring-white/50 scale-105'
+                    : 'opacity-30'
+                  : ''
+              }`}
+            >
+              <p className="text-2xl mb-2">{SHAPES[i]}</p>
+              <p>{ans}</p>
+            </button>
+          ))}
+        </div>
+      )}
 
-      {/* Waiting indicator with all players including admin */}
-      {hasAnswered && !showResults && (
+      {/* Waiting indicator */}
+      {!isSpectator && hasAnswered && !showResults && (
         <div className="mt-4 text-center animate-fade-in">
           <p className="text-accent font-bold text-sm mb-2">Réponse envoyée ✅</p>
           <div className="flex justify-center gap-1.5 mt-2">

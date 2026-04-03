@@ -146,9 +146,10 @@ export default function App() {
   }
 
   const handleScoreUser = async (userId: string, points: number) => {
-    const targetUser = users.find((u) => u.id === userId)
-    if (!targetUser) return
-    const newScore = Math.max(0, targetUser.score + points)
+    // Fetch fresh score from DB to avoid race conditions with concurrent updates
+    const { data: fresh } = await supabase.from('users').select('score').eq('id', userId).single()
+    if (!fresh) return
+    const newScore = Math.max(0, fresh.score + points)
     await supabase.from('users').update({ score: newScore }).eq('id', userId)
     await updateProgress()
   }

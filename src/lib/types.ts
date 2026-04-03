@@ -25,7 +25,7 @@ export interface Room {
   progress_percentage: number
   current_game: 'idle' | 'truth-dare' | 'challenge' | 'quiz' | 'wyr' | null
   current_card: string | null
-  current_card_type: 'truth' | 'dare' | 'challenge' | null
+  current_card_type: 'truth' | 'dare' | 'challenge' | 'wyr' | null
   current_card_target: string | null
   current_challenge_id: string | null
   session_version: number

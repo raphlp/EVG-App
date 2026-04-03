@@ -65,29 +65,29 @@ export default function AdminPanel({ user, onClose, onLogout, onContent }: Admin
     // Reset scores + photos
     await supabase.from('users').update({ score: 0, avatar_url: null, has_submitted_challenges: false }).eq('is_target', false)
     await supabase.from('users').update({ score: 0, avatar_url: null, has_submitted_challenges: true }).eq('is_target', true)
-    // Delete all challenges
+    // Delete all challenges + quiz answers
     await supabase.from('vincent_challenges').delete().not('id', 'is', null)
-    // Reset room — core fields
-    await supabase
-      .from('room')
-      .update({
-        total_points: 0,
-        progress_percentage: 0,
-        current_game: 'idle',
-        current_card: null,
-        current_card_type: null,
-        current_card_target: null,
-        current_challenge_id: null,
-      })
-      .eq('name', 'EVG Vincent')
-    // Reset quiz state
     await supabase.from('quiz_answers').delete().not('id', 'is', null)
-    await supabase.from('room').update({ quiz_launched: false, quiz_question_index: 0, quiz_show_results: false, quiz_finished: false }).eq('name', 'EVG Vincent')
-    await supabase.from('room').update({ quiz_paused: false, quiz_question_started_at: null }).eq('name', 'EVG Vincent')
     // Bump session version to force logout
     const { data: currentRoom } = await supabase.from('room').select('session_version').single()
     const newVersion = (currentRoom?.session_version || 1) + 1
-    await supabase.from('room').update({ session_version: newVersion }).eq('name', 'EVG Vincent')
+    // Single atomic room reset
+    await supabase.from('room').update({
+      total_points: 0,
+      progress_percentage: 0,
+      current_game: 'idle',
+      current_card: null,
+      current_card_type: null,
+      current_card_target: null,
+      current_challenge_id: null,
+      quiz_launched: false,
+      quiz_question_index: 0,
+      quiz_show_results: false,
+      quiz_finished: false,
+      quiz_paused: false,
+      quiz_question_started_at: null,
+      session_version: newVersion,
+    }).eq('name', 'EVG Vincent')
     addLog('✅ TOUT remis à zéro — déconnexion...')
     setConfirmAction(null)
     setTimeout(() => onLogout(), 500)
@@ -95,6 +95,7 @@ export default function AdminPanel({ user, onClose, onLogout, onContent }: Admin
 
   const clearRoomState = async () => {
     vibrate()
+    await supabase.from('quiz_answers').delete().not('id', 'is', null)
     await supabase.from('room').update({
       current_game: 'idle',
       current_card: null,
@@ -105,9 +106,9 @@ export default function AdminPanel({ user, onClose, onLogout, onContent }: Admin
       quiz_question_index: 0,
       quiz_show_results: false,
       quiz_finished: false,
+      quiz_paused: false,
+      quiz_question_started_at: null,
     }).eq('name', 'EVG Vincent')
-    await supabase.from('room').update({ quiz_paused: false, quiz_question_started_at: null }).eq('name', 'EVG Vincent')
-    await supabase.from('quiz_answers').delete().not('id', 'is', null)
     addLog('✅ État du jeu nettoyé + quiz re-disponible')
   }
 
@@ -126,9 +127,14 @@ export default function AdminPanel({ user, onClose, onLogout, onContent }: Admin
   const resetQuiz = async () => {
     vibrate()
     await supabase.from('quiz_answers').delete().not('id', 'is', null)
-    // Split updates: core fields first, then newer fields (in case columns don't exist yet)
-    await supabase.from('room').update({ quiz_launched: false, quiz_question_index: 0, quiz_show_results: false, quiz_finished: false }).eq('name', 'EVG Vincent')
-    await supabase.from('room').update({ quiz_paused: false, quiz_question_started_at: null }).eq('name', 'EVG Vincent')
+    await supabase.from('room').update({
+      quiz_launched: false,
+      quiz_question_index: 0,
+      quiz_show_results: false,
+      quiz_finished: false,
+      quiz_paused: false,
+      quiz_question_started_at: null,
+    }).eq('name', 'EVG Vincent')
     addLog('✅ Quiz re-disponible')
   }
 

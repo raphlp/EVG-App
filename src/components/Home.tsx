@@ -47,8 +47,14 @@ export default function Home({ user, room, onNavigate, onLogout, onAdmin }: Home
   const resetQuiz = async () => {
     vibrate()
     await supabase.from('quiz_answers').delete().not('id', 'is', null)
-    await supabase.from('room').update({ quiz_launched: false, quiz_question_index: 0, quiz_show_results: false, quiz_finished: false }).eq('name', 'EVG Vincent')
-    await supabase.from('room').update({ quiz_paused: false, quiz_question_started_at: null }).eq('name', 'EVG Vincent')
+    await supabase.from('room').update({
+      quiz_launched: false,
+      quiz_question_index: 0,
+      quiz_show_results: false,
+      quiz_finished: false,
+      quiz_paused: false,
+      quiz_question_started_at: null,
+    }).eq('name', 'EVG Vincent')
   }
 
   const menuItems: { page: Page; emoji: string; label: string; desc: string; color: string }[] = [
