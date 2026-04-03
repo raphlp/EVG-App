@@ -1,21 +1,23 @@
 import { useState, useEffect } from 'react'
 import { supabase } from '../lib/supabase'
 import { vibrate } from '../lib/vibrate'
+import type { User } from '../lib/types'
 
-type Tab = 'truths' | 'dares' | 'quiz' | 'wyr'
+type Tab = 'players' | 'truths' | 'dares' | 'quiz' | 'wyr'
 
 interface SimpleItem { id: string; content: string }
 interface QuizItem { id: string; question: string; answer_a: string; answer_b: string; answer_c: string; answer_d: string; correct: number }
 interface WyrItem { id: string; option_a: string; option_b: string }
 
 export default function AdminContent({ onBack }: { onBack: () => void }) {
-  const [tab, setTab] = useState<Tab>('truths')
+  const [tab, setTab] = useState<Tab>('players')
 
   const tabs: { key: Tab; label: string; emoji: string }[] = [
+    { key: 'players', label: 'Joueurs', emoji: '👥' },
     { key: 'truths', label: 'Vérités', emoji: '🤔' },
     { key: 'dares', label: 'Actions', emoji: '🎬' },
     { key: 'quiz', label: 'Quiz', emoji: '🧠' },
-    { key: 'wyr', label: 'Tu préfères', emoji: '🤷' },
+    { key: 'wyr', label: 'Tu préf.', emoji: '🤷' },
   ]
 
   return (
@@ -31,7 +33,7 @@ export default function AdminContent({ onBack }: { onBack: () => void }) {
           <button
             key={t.key}
             onClick={() => setTab(t.key)}
-            className={`flex-1 py-2 px-3 rounded-xl text-sm font-bold transition-all ${
+            className={`flex-1 py-2 px-2 rounded-xl text-xs font-bold transition-all ${
               tab === t.key ? 'gradient-bg text-white' : 'bg-dark-light text-gray-400'
             }`}
           >
@@ -40,10 +42,97 @@ export default function AdminContent({ onBack }: { onBack: () => void }) {
         ))}
       </div>
 
+      {tab === 'players' && <PlayersList />}
       {tab === 'truths' && <SimpleList table="truths" placeholder="Ex: Ton plus gros secret ?" />}
       {tab === 'dares' && <SimpleList table="dares" placeholder="Ex: Danse 30 secondes" />}
       {tab === 'quiz' && <QuizList />}
       {tab === 'wyr' && <WyrList />}
+    </div>
+  )
+}
+
+// ============ Players list ============
+function PlayersList() {
+  const [players, setPlayers] = useState<User[]>([])
+  const [loading, setLoading] = useState(true)
+  const [newName, setNewName] = useState('')
+
+  const fetchPlayers = async () => {
+    const { data } = await supabase.from('users').select('*').order('created_at')
+    if (data) setPlayers(data as User[])
+    setLoading(false)
+  }
+
+  useEffect(() => { fetchPlayers() }, [])
+
+  const addPlayer = async () => {
+    const name = newName.trim()
+    if (!name) return
+    vibrate()
+    const username = name.toLowerCase().replace(/\s+/g, '-')
+    await supabase.from('users').insert({
+      username,
+      display_name: name,
+      score: 0,
+      is_admin: false,
+      is_target: false,
+      has_submitted_challenges: false,
+    })
+    setNewName('')
+    fetchPlayers()
+  }
+
+  const removePlayer = async (player: User) => {
+    if (player.is_admin || player.is_target) return // can't delete admin or Vincent
+    vibrate()
+    await supabase.from('users').delete().eq('id', player.id)
+    fetchPlayers()
+  }
+
+  return (
+    <div>
+      <div className="flex gap-2 mb-4">
+        <input
+          type="text"
+          value={newName}
+          onChange={(e) => setNewName(e.target.value)}
+          onKeyDown={(e) => e.key === 'Enter' && addPlayer()}
+          placeholder="Prénom du joueur..."
+          className="flex-1 px-3 py-3 rounded-xl bg-dark-light text-white placeholder-gray-500 border border-dark-lighter focus:border-accent focus:outline-none text-sm"
+        />
+        <button onClick={addPlayer} disabled={!newName.trim()} className="px-4 py-3 rounded-xl gradient-bg text-white font-bold text-sm active:scale-95 transition-transform disabled:opacity-30">
+          +
+        </button>
+      </div>
+
+      {loading ? <p className="text-gray-500 text-center text-sm">Chargement...</p> : (
+        <div className="space-y-2">
+          {players.map((p) => (
+            <div key={p.id} className={`card flex items-center gap-3 py-3 ${
+              p.is_admin ? 'border-yellow-500/30' : p.is_target ? 'border-purple-500/30' : ''
+            }`}>
+              <div className="w-10 h-10 rounded-full bg-dark-lighter flex items-center justify-center overflow-hidden flex-shrink-0">
+                {p.avatar_url ? (
+                  <img src={p.avatar_url} alt="" className="w-full h-full object-cover" />
+                ) : (
+                  <span className="text-lg">{p.is_target ? '👑' : p.is_admin ? '🎮' : '😎'}</span>
+                )}
+              </div>
+              <div className="flex-1">
+                <p className="font-bold text-sm">{p.display_name}</p>
+                <p className="text-xs text-gray-500">
+                  {p.is_admin ? 'Admin' : p.is_target ? 'Le marié' : 'Joueur'}
+                  {p.score > 0 && ` — ${p.score} pts`}
+                </p>
+              </div>
+              {!p.is_admin && !p.is_target && (
+                <button onClick={() => removePlayer(p)} className="text-red-400 text-lg flex-shrink-0 active:scale-90">✕</button>
+              )}
+            </div>
+          ))}
+          <p className="text-gray-600 text-xs text-center mt-2">{players.length} joueur{players.length > 1 ? 's' : ''}</p>
+        </div>
+      )}
     </div>
   )
 }
@@ -88,7 +177,7 @@ function SimpleList({ table, placeholder }: { table: string; placeholder: string
           placeholder={placeholder}
           className="flex-1 px-3 py-3 rounded-xl bg-dark-light text-white placeholder-gray-500 border border-dark-lighter focus:border-accent focus:outline-none text-sm"
         />
-        <button onClick={add} disabled={!newText.trim()} className="px-4 py-3 rounded-xl gradient-bg text-white font-bold text-sm active:scale-95 transition-transform disabled:opacity-50">
+        <button onClick={add} disabled={!newText.trim()} className="px-4 py-3 rounded-xl gradient-bg text-white font-bold text-sm active:scale-95 transition-transform disabled:opacity-30">
           +
         </button>
       </div>
@@ -249,7 +338,7 @@ function WyrList() {
           onKeyDown={(e) => e.key === 'Enter' && add()}
           placeholder="Option B..."
           className="w-full px-3 py-2 rounded-lg bg-dark text-white placeholder-gray-500 border border-dark-lighter focus:border-accent focus:outline-none text-sm" />
-        <button onClick={add} disabled={!optA.trim() || !optB.trim()} className="w-full py-2 rounded-lg gradient-bg text-white font-bold text-sm active:scale-95 transition-transform disabled:opacity-50">
+        <button onClick={add} disabled={!optA.trim() || !optB.trim()} className="w-full py-2 rounded-lg gradient-bg text-white font-bold text-sm active:scale-95 transition-transform disabled:opacity-30">
           + Ajouter
         </button>
       </div>
